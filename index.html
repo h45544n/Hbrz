@@ -1,5 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Portfolio Studio</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Portfolio Studio</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@600;800&family=Syne:wght@700;800&family=Raleway:wght@700;800&family=Fraunces:wght@700;800&family=Chakra+Petch:wght@700&display=swap">
@@ -752,7 +751,7 @@ function lookView(){
   +'<div class="panel stack"><h2>Colour</h2><div class="fld"><span>Theme</span>'+seg('theme',[['system','Match device'],['light','Light'],['dark','Dark']],L.theme)+'</div><div class="fld"><span>Accent</span><div class="swatches">'+SWATCH.map(function(c){return '<button class="swatch" style="background:'+c+'" data-act="look" data-k="accent" data-v="'+c+'" aria-pressed="'+(L.accent.toLowerCase()===c)+'" aria-label="Accent '+c+'">'+(L.accent.toLowerCase()===c?ico('check',14):'')+'</button>'}).join('')+ctl({type:'color',scope:'look',f:'accent',val:L.accent})+'</div></div></div>'
   +'<div class="panel stack"><h2>Heading font</h2><div class="fonts">'+FONTS.map(function(f){return '<button class="fontbtn" data-act="look" data-k="headFont" data-v="'+f[0]+'" aria-pressed="'+(L.headFont===f[0])+'" style="font-family:'+f[2]+'"><span>Aa</span><small>'+f[1]+'</small></button>'}).join('')+'</div><p class="hint">Used for headings, your name, the site name and the big numbers.</p></div>'
   +'<div class="panel stack"><h2>Project grid</h2><div class="fld"><span>Columns</span>'+seg('cols',[[2,'2'],[3,'3'],[4,'4']],L.cols)+'</div><div class="fld"><span>Thumbnail shape</span>'+seg('aspect',[['4 / 3','4:3'],['1 / 1','Square'],['16 / 10','16:10'],['3 / 4','Portrait']],L.aspect)+'</div><div class="fld"><span>Corners</span>'+seg('card',[['round','Rounded'],['sharp','Sharp']],L.card)+'</div>'+sw(ctl({type:'checkbox',scope:'look',f:'showStats',val:L.showStats}),'Show views and appreciations on cards')+'<div class="mini" aria-hidden="true"><div></div><div></div><div></div><div></div></div></div>'
-  +'<div class="panel stack"><h2>Site</h2><div class="two">'+fld('Site name',ctl({scope:'look',f:'siteTitle',val:L.siteTitle,ph:S.profile.name}),'Shown top left. Empty uses your name.')+fld('Footer text',ctl({scope:'look',f:'footer',val:L.footer,ph:'Made with care'}))+'</div>'+sw(ctl({type:'checkbox',scope:'look',f:'showDash',val:L.showDash}),'Show the Dashboard button on the public site')+'<p class="hint">Turn the button off before you publish. Anyone who knows the address can still open the dashboard, but their edits only change their own browser.</p></div>';
+  +'<div class="panel stack"><h2>Site</h2><div class="two">'+fld('Site name',ctl({scope:'look',f:'siteTitle',val:L.siteTitle,ph:S.profile.name}),'Shown top left. Empty uses your name.')+fld('Footer text',ctl({scope:'look',f:'footer',val:L.footer,ph:'Made with care'}))+'</div>'+sw(ctl({type:'checkbox',scope:'look',f:'showDash',val:L.showDash}),'Show the Dashboard button on the public site')+'<div class="banner" style="margin:0"><div style="min-width:0"><b>Getting back in later</b><p class="hint" style="margin-top:4px">With the button off, open your dashboard by adding <span class="mono">#dash-overview</span> to your site address, or press <span class="mono">Alt + Shift + D</span> on any page. Visitors cannot change your site either way; their edits only stay in their own browser.</p><p class="mono" style="margin-top:8px;overflow-wrap:anywhere;font-size:12.5px">'+esc(location.href.split('#')[0])+'#dash-overview</p></div><button class="btn sm" data-act="copy" data-text="'+esc(location.href.split('#')[0])+'#dash-overview">'+ico('copy',14)+' Copy dashboard address</button></div></div>';
 }
 function dataView(){
   var n=S.projects.length,sampleN=S.projects.filter(function(p){return p.sample}).length;
@@ -959,6 +958,7 @@ document.addEventListener('keydown',function(e){
     e.preventDefault();var v=t.value.trim().replace(/,$/,'');if(!v)return;
     var arr=getArr(t.dataset);if(arr&&arr.indexOf(v)<0)arr.push(v);ui.focus=t.id;save();render(true);return;
   }
+  if(e.altKey&&e.shiftKey&&(e.code==='KeyD'||(e.key||'').toLowerCase()==='d')){e.preventDefault();go('dash-overview');return}
   if(e.key==='Escape'){$('#lb').innerHTML='';closeModal()}
 });
 $('#fileIn').addEventListener('change',function(e){
@@ -988,5 +988,4 @@ render(false);
 if(curHash.length>1&&parse().n!=='home'){onRoute()}else lastKey=curHash;
 })();
 </script>
-
 </body></html>

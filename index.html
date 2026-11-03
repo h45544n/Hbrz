@@ -348,7 +348,7 @@ function art(seed,hue,animate){
 }
 var SAMPLE_AVATAR=art(77,260);
 var DEF_ABOUT='Tell visitors who you are, what you make and who you make it for. Two or three short paragraphs work best.\n\nEdit this text in Dashboard, then Profile. Everything on this page is editable from there.';
-var DEF_LOOK={theme:'system',accent:'#2f5bff',cols:3,card:'round',aspect:'4 / 3',showStats:true,showDash:true,siteTitle:'',footer:'',headFont:'unbounded'};
+var DEF_LOOK={theme:'system',accent:'#2f5bff',cols:3,card:'round',aspect:'4 / 3',showStats:true,showDash:true,dashKey:'h455aan',siteTitle:'',footer:'',headFont:'unbounded'};
 var FONTS=[['unbounded','Unbounded',"'Unbounded',system-ui,sans-serif"],['syne','Syne',"'Syne',system-ui,sans-serif"],['raleway','Raleway',"'Raleway',system-ui,sans-serif"],['chakra','Chakra Petch',"'Chakra Petch',system-ui,sans-serif"],['fraunces','Fraunces',"'Fraunces',Georgia,serif"]];
 
 function blankProfile(){return {name:'Your Name',headline:'Designer and illustrator making clear, useful things for screens and print.',location:'City, Country',email:'hello@yourname.com',phone:'',about:DEF_ABOUT,available:true,availableNote:'Available for freelance projects',avatar:SAMPLE_AVATAR,
@@ -558,7 +558,7 @@ function applyField(t){
 /* ---------- public site ---------- */
 function pubHead(){
   var L=S.look,P=S.profile;
-  return '<header class="pubhead"><div class="wrap bar"><a class="brand" href="#portfolio">'+esc(L.siteTitle||P.name)+'</a><nav class="nav" aria-label="Site"><button class="nl" data-act="scroll" data-to="work">Work</button><button class="nl" data-act="scroll" data-to="about">About</button><button class="nl" data-act="scroll" data-to="contact">Contact</button><button class="icon-btn" data-act="theme" aria-label="Switch light or dark theme">'+ico(isDark()?'sun':'moon',18)+'</button>'+(L.showDash?'<a class="btn sm primary" href="#dash-overview">'+ico('edit',15)+' Dashboard</a>':'')+'</nav></div></header>';
+  return '<header class="pubhead"><div class="wrap bar"><a class="brand" href="#portfolio">'+esc(L.siteTitle||P.name)+'</a><nav class="nav" aria-label="Site"><button class="nl" data-act="scroll" data-to="work">Work</button><button class="nl" data-act="scroll" data-to="about">About</button><button class="nl" data-act="scroll" data-to="contact">Contact</button><button class="icon-btn" data-act="theme" aria-label="Switch light or dark theme">'+ico(isDark()?'sun':'moon',18)+'</button>'+(unlocked?'<a class="btn sm primary" href="#dash-overview">'+ico('edit',15)+' Dashboard</a>':'')+'</nav></div></header>';
 }
 function card(p){
   var L=S.look;
@@ -589,7 +589,7 @@ function homeView(){
   +(list.length?'<div class="grid">'+list.map(card).join('')+'</div>':'<div class="empty">No published projects yet. Add one in the dashboard and press Publish.</div>')+'</div></section>'
   +'<section class="sec" id="about"><div class="wrap"><div class="sec-h"><h2>About</h2></div><div class="about"><div><div class="prose">'+para(P.about)+'</div>'+skillGroupsHtml(P)+'</div><div>'+listHtml('Experience',P.experience)+listHtml('Education',P.education)+'</div></div></div></section>'
   +'<section class="sec" id="contact"><div class="wrap"><div class="sec-h"><h2>Contact</h2></div><p class="contact-mail">'+esc(P.email)+'</p>'+(P.phone?'<p class="phone">'+esc(P.phone)+'</p>':'')+'<div class="links"><button class="btn" data-act="copy" data-text="'+esc(P.email)+'">'+ico('copy',16)+' Copy email</button>'+(P.email?'<a class="btn primary" href="mailto:'+esc(P.email)+'">Write an email</a>':'')+P.links.map(function(l){var u=safeUrl(l.url);return u?'<a class="btn" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label||hostOf(u))+' '+ico('ext',14)+'</a>':''}).join('')+'</div></div></section></main>'
-  +'<footer class="wrap foot"><span>© '+year+' '+esc(P.name)+'</span><span>'+esc(L.footer||'')+'</span></footer>';
+  +'<footer class="wrap foot"><span data-act="tap-c">© '+year+' '+esc(P.name)+'</span><span>'+esc(L.footer||'')+'</span></footer>';
 }
 function blockView(b){
   var cap=b.caption?'<figcaption>'+esc(b.caption)+'</figcaption>':'';
@@ -628,7 +628,7 @@ var NAV=[['overview','Overview','grid'],['projects','Projects','folder'],['profi
 function dashShell(r){
   var cur=r.n==='edit'?'projects':r.n,body='';
   if(r.n==='overview')body=overview();else if(r.n==='projects')body=projectsView();else if(r.n==='edit')body=editView(r.id);else if(r.n==='profile')body=profileView();else if(r.n==='look')body=lookView();else body=dataView();
-  return '<header class="dtop"><div class="wrap wide bar"><a class="brand" href="#dash-overview">Studio</a><div class="row"><span class="hint savestate" style="margin-right:6px">'+esc(saveMsg)+'</span><button class="icon-btn" data-act="theme" aria-label="Switch light or dark theme">'+ico(isDark()?'sun':'moon',18)+'</button><a class="btn sm" href="#portfolio">'+ico('eye',15)+' View site</a><button class="btn sm primary" data-act="new-project">'+ico('plus',15)+' New project</button></div></div></header>'
+  return '<header class="dtop"><div class="wrap wide bar"><a class="brand" href="#dash-overview">Studio</a><div class="row"><span class="hint savestate" style="margin-right:6px">'+esc(saveMsg)+'</span><button class="icon-btn" data-act="theme" aria-label="Switch light or dark theme">'+ico(isDark()?'sun':'moon',18)+'</button><a class="btn sm" href="#portfolio">'+ico('eye',15)+' View site</a><button class="btn sm" data-act="lock">Lock</button><button class="btn sm primary" data-act="new-project">'+ico('plus',15)+' New project</button></div></div></header>'
   +'<div class="wrap wide dash"><aside class="side"><div class="me"><img '+msrc(S.profile.avatar)+' alt=""><div style="min-width:0"><b>'+esc(S.profile.name)+'</b><small>'+esc(S.profile.email)+'</small></div></div><nav class="snav" aria-label="Dashboard">'+NAV.map(function(n){return '<a href="#dash-'+n[0]+'"'+(cur===n[0]?' aria-current="page"':'')+'>'+ico(n[2],18)+n[1]+'</a>'}).join('')+'</nav></aside><main class="main">'+body+'</main></div>';
 }
 function nice(n){var s=Math.pow(10,Math.floor(Math.log10(n))),c=[1,2,3,4,5,6,8,10];for(var i=0;i<c.length;i++){if(c[i]*s>=n){var v=c[i]*s;return v%2?v+1:v}}return 10*s}
@@ -751,7 +751,7 @@ function lookView(){
   +'<div class="panel stack"><h2>Colour</h2><div class="fld"><span>Theme</span>'+seg('theme',[['system','Match device'],['light','Light'],['dark','Dark']],L.theme)+'</div><div class="fld"><span>Accent</span><div class="swatches">'+SWATCH.map(function(c){return '<button class="swatch" style="background:'+c+'" data-act="look" data-k="accent" data-v="'+c+'" aria-pressed="'+(L.accent.toLowerCase()===c)+'" aria-label="Accent '+c+'">'+(L.accent.toLowerCase()===c?ico('check',14):'')+'</button>'}).join('')+ctl({type:'color',scope:'look',f:'accent',val:L.accent})+'</div></div></div>'
   +'<div class="panel stack"><h2>Heading font</h2><div class="fonts">'+FONTS.map(function(f){return '<button class="fontbtn" data-act="look" data-k="headFont" data-v="'+f[0]+'" aria-pressed="'+(L.headFont===f[0])+'" style="font-family:'+f[2]+'"><span>Aa</span><small>'+f[1]+'</small></button>'}).join('')+'</div><p class="hint">Used for headings, your name, the site name and the big numbers.</p></div>'
   +'<div class="panel stack"><h2>Project grid</h2><div class="fld"><span>Columns</span>'+seg('cols',[[2,'2'],[3,'3'],[4,'4']],L.cols)+'</div><div class="fld"><span>Thumbnail shape</span>'+seg('aspect',[['4 / 3','4:3'],['1 / 1','Square'],['16 / 10','16:10'],['3 / 4','Portrait']],L.aspect)+'</div><div class="fld"><span>Corners</span>'+seg('card',[['round','Rounded'],['sharp','Sharp']],L.card)+'</div>'+sw(ctl({type:'checkbox',scope:'look',f:'showStats',val:L.showStats}),'Show views and appreciations on cards')+'<div class="mini" aria-hidden="true"><div></div><div></div><div></div><div></div></div></div>'
-  +'<div class="panel stack"><h2>Site</h2><div class="two">'+fld('Site name',ctl({scope:'look',f:'siteTitle',val:L.siteTitle,ph:S.profile.name}),'Shown top left. Empty uses your name.')+fld('Footer text',ctl({scope:'look',f:'footer',val:L.footer,ph:'Made with care'}))+'</div>'+sw(ctl({type:'checkbox',scope:'look',f:'showDash',val:L.showDash}),'Show the Dashboard button on the public site')+'<div class="banner" style="margin:0"><div style="min-width:0"><b>Getting back in later</b><p class="hint" style="margin-top:4px">With the button off, open your dashboard by adding <span class="mono">#dash-overview</span> to your site address, or press <span class="mono">Alt + Shift + D</span> on any page. Visitors cannot change your site either way; their edits only stay in their own browser.</p><p class="mono" style="margin-top:8px;overflow-wrap:anywhere;font-size:12.5px">'+esc(location.href.split('#')[0])+'#dash-overview</p></div><button class="btn sm" data-act="copy" data-text="'+esc(location.href.split('#')[0])+'#dash-overview">'+ico('copy',14)+' Copy dashboard address</button></div></div>';
+  +'<div class="panel stack"><h2>Site</h2><div class="two">'+fld('Site name',ctl({scope:'look',f:'siteTitle',val:L.siteTitle,ph:S.profile.name}),'Shown top left. Empty uses your name.')+fld('Footer text',ctl({scope:'look',f:'footer',val:L.footer,ph:'Made with care'}))+'</div>'+'</div><div class="panel stack"><h2>Dashboard access</h2><p>Your dashboard is hidden from visitors. It opens only through your secret address, or by typing the access key.</p>'+fld('Access key',ctl({scope:'look',f:'dashKey',val:dashKey(),re:true}),'Letters and numbers. Change it any time.')+'<div class="banner" style="margin:0"><div style="min-width:0"><b>Your secret address</b><p class="mono" style="margin-top:6px;overflow-wrap:anywhere;font-size:12.5px">'+esc(secretUrl())+'</p><p class="hint" style="margin-top:6px">You can also press <span class="mono">Alt + Shift + D</span>, or click the © in the footer five times, and type the key. This keeps casual visitors out. It is not a password, because the key is stored in the site file. Visitors cannot change your site even if they get in; their edits stay in their own browser.</p></div><button class="btn sm" data-act="copy" data-text="'+esc(secretUrl())+'">'+ico('copy',14)+' Copy secret address</button></div></div>';
 }
 function dataView(){
   var n=S.projects.length,sampleN=S.projects.filter(function(p){return p.sample}).length;
@@ -763,9 +763,21 @@ function dataView(){
 
 /* ---------- routing ---------- */
 var curHash=location.hash||'';
+var unlocked=false;try{unlocked=sessionStorage.getItem('ps-unlocked')==='1'}catch(e){}
+function dashKey(){var k=String((S&&S.look&&S.look.dashKey)||'').trim();return k||'h455aan'}
+function secretHash(){return '!@#dash-'+dashKey()}
+function secretUrl(){return location.href.split('#')[0]+'#'+secretHash()}
+function decHash(x){try{return decodeURIComponent(x)}catch(e){return x}}
+function unlockNow(){
+  unlocked=true;try{sessionStorage.setItem('ps-unlocked','1');sessionStorage.setItem('ps-owner','1')}catch(e){}
+  curHash='#dash-overview';
+  try{history.replaceState(null,'',location.pathname+location.search+curHash)}catch(e){}
+}
 function parse(){
-  var h=curHash.replace(/^#/,''),m;
+  var h=decHash(curHash.replace(/^#/,'')),m;
   if(!h||h==='portfolio')return {n:'home'};
+  if(h===secretHash())return {n:'unlock'};
+  if(!unlocked&&/^dash-/.test(h))return {n:'home'};
   if((m=/^work-([a-z0-9]+)$/.exec(h)))return {n:'work',id:m[1]};
   if((m=/^dash-edit-([a-z0-9]+)$/.exec(h)))return {n:'edit',id:m[1]};
   if(/^dash-(overview|projects|profile|look|data)$/.test(h))return {n:h.slice(5)};
@@ -773,7 +785,7 @@ function parse(){
 }
 var lastKey=null;
 function go(h){
-  h=String(h||'').replace(/^#/,'');curHash=h?'#'+h:'';
+  h=String(h||'').replace(/^#/,'');curHash=h?'#'+h:'';if(parse().n==='unlock'){unlockNow();h='dash-overview'}
   try{if(location.hash!==curHash)location.hash=h}catch(e){}
   onRoute();
 }
@@ -820,6 +832,10 @@ function closeModal(){$('#modal').innerHTML='';window.__confirm=null}
 function newProject(){
   var p={id:uid(),title:'Untitled project',desc:'',tags:[],tools:[],year:String(new Date().getFullYear()),client:'',url:'',cover:'',status:'draft',featured:false,likes:0,views:0,blocks:[],created:Date.now(),updated:Date.now()};
   S.projects.unshift(p);save();go('dash-edit-'+p.id);
+}
+function keyPrompt(){
+  $('#modal').innerHTML='<div class="modal" data-act="modal-cancel"><div class="mbox" role="dialog" aria-modal="true" aria-label="Dashboard access"><h2>Dashboard access</h2><label class="fld"><span>Access key</span><input class="in" id="keyIn" type="password" autocomplete="off"></label><div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-cancel">Cancel</button><button class="btn primary" data-act="key-ok">Open dashboard</button></div></div></div>';
+  setTimeout(function(){var k=$('#keyIn');if(k)k.focus()},30);
 }
 var pickFn=null;
 function openPicker(accept,multiple,fn){pickFn=fn;var f=$('#fileIn');f.accept=accept;f.multiple=!!multiple;f.value='';f.click()}
@@ -930,6 +946,16 @@ var ACT={
     });
   },
   'clear-sample':function(){confirmBox('Delete sample projects?','The five example projects will be removed. Your own projects stay.','Delete samples',function(){S.projects=S.projects.filter(function(p){return !p.sample});S.stats={demo:false,daily:{}};save();render(true);toast('Sample projects removed.')})},
+  'tap-c':function(){
+    var t=Date.now();if(t-(ACT._t||0)>3000)ACT._n=0;ACT._t=t;ACT._n=(ACT._n||0)+1;
+    if(ACT._n>=5){ACT._n=0;keyPrompt()}
+  },
+  'key-ok':function(){
+    var v=(($('#keyIn')||{}).value||'').trim();
+    if(v&&(v===dashKey()||v===secretHash())){closeModal();unlockNow();go('dash-overview');toast('Dashboard unlocked.')}
+    else toast('That is not the access key.');
+  },
+  lock:function(){unlocked=false;try{sessionStorage.removeItem('ps-unlocked');sessionStorage.removeItem('ps-owner')}catch(e){}go('portfolio');toast('Dashboard locked.')},
   'reset-now':function(){try{localStorage.removeItem(KEY)}catch(e){}S=load();saveMsg='';go('portfolio')},
   'reset-local':function(){confirmBox('Discard changes?','This removes the copy saved in this browser and reloads the version built into the file.','Discard',function(){try{localStorage.removeItem(KEY)}catch(e){}S=load();saveMsg='';render(true);toast('Back to the built-in version.')})},
   'clear-all':function(){confirmBox('Start from empty?','All projects and profile text are removed from this browser. Download a backup first if you might want them back.','Start empty',function(){var e=sample();e.projects=[];e.stats={demo:false,daily:{}};e.profile=blankProfile();e.profile.avatar='';S=norm(e);save();render(true);toast('Empty portfolio ready.')})},
@@ -958,7 +984,8 @@ document.addEventListener('keydown',function(e){
     e.preventDefault();var v=t.value.trim().replace(/,$/,'');if(!v)return;
     var arr=getArr(t.dataset);if(arr&&arr.indexOf(v)<0)arr.push(v);ui.focus=t.id;save();render(true);return;
   }
-  if(e.altKey&&e.shiftKey&&(e.code==='KeyD'||(e.key||'').toLowerCase()==='d')){e.preventDefault();go('dash-overview');return}
+  if(e.altKey&&e.shiftKey&&(e.code==='KeyD'||(e.key||'').toLowerCase()==='d')){e.preventDefault();if(unlocked)go('dash-overview');else keyPrompt();return}
+  if(e.key==='Enter'&&t&&t.id==='keyIn'){e.preventDefault();ACT['key-ok']();return}
   if(e.key==='Escape'){$('#lb').innerHTML='';closeModal()}
 });
 $('#fileIn').addEventListener('change',function(e){
@@ -974,7 +1001,7 @@ document.addEventListener('mouseover',function(e){
   var b=el.getBoundingClientRect(),w=tip.offsetWidth;
   tip.style.left=Math.max(8,Math.min(window.innerWidth-w-8,b.left+b.width/2-w/2))+'px';tip.style.top=Math.max(8,b.top-34)+'px';
 });
-window.addEventListener('hashchange',function(){curHash=location.hash||'';if(curHash!==lastKey)onRoute()});
+window.addEventListener('hashchange',function(){curHash=location.hash||'';if(parse().n==='unlock')unlockNow();if(curHash!==lastKey)onRoute()});
 window.addEventListener('click',function(e){
   var a=e.target&&e.target.closest&&e.target.closest('a[href^="#"]');
   if(!a||e.button||e.metaKey||e.ctrlKey||e.shiftKey)return;
@@ -984,6 +1011,7 @@ window.addEventListener('click',function(e){
 /* ---------- start ---------- */
 applyLook();
 if(!S.edited)saveMsg='';
+if(parse().n==='unlock')unlockNow();
 render(false);
 if(curHash.length>1&&parse().n!=='home'){onRoute()}else lastKey=curHash;
 })();

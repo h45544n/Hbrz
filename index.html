@@ -348,7 +348,7 @@ function art(seed,hue,animate){
 }
 var SAMPLE_AVATAR=art(77,260);
 var DEF_ABOUT='Tell visitors who you are, what you make and who you make it for. Two or three short paragraphs work best.\n\nEdit this text in Dashboard, then Profile. Everything on this page is editable from there.';
-var DEF_LOOK={theme:'system',accent:'#2f5bff',cols:3,card:'round',aspect:'4 / 3',showStats:true,showDash:true,dashKey:'h455aan',siteTitle:'',footer:'',headFont:'unbounded'};
+var DEF_LOOK={theme:'system',accent:'#2f5bff',cols:3,card:'round',aspect:'4 / 3',showStats:true,showDash:true,dashKey:'h455aan',repo:'h45544n/Hbrz',siteTitle:'',footer:'',headFont:'unbounded'};
 var FONTS=[['unbounded','Unbounded',"'Unbounded',system-ui,sans-serif"],['syne','Syne',"'Syne',system-ui,sans-serif"],['raleway','Raleway',"'Raleway',system-ui,sans-serif"],['chakra','Chakra Petch',"'Chakra Petch',system-ui,sans-serif"],['fraunces','Fraunces',"'Fraunces',Georgia,serif"]];
 
 function blankProfile(){return {name:'Your Name',headline:'Designer and illustrator making clear, useful things for screens and print.',location:'City, Country',email:'hello@yourname.com',phone:'',about:DEF_ABOUT,available:true,availableNote:'Available for freelance projects',avatar:SAMPLE_AVATAR,
@@ -487,11 +487,127 @@ function paintSave(){$$('.savestate').forEach(function(e){e.textContent=saveMsg}
 function saveStats(){tset(KEY+'-stats',JSON.stringify(T));tset(KEY+'-liked',JSON.stringify(liked))}
 
 /* ---------- helpers ---------- */
-function proj(id){return S.projects.filter(function(p){return p.id===id})[0]}
+function proj(id){return S.projects.filter(function(p){return p.id===id})[0]||R.filter(function(p){return p.id===id})[0]}
 function blk(pid,bid){var p=proj(pid);return p?p.blocks.filter(function(b){return b.id===bid})[0]:null}
 var vw=function(p){return (p.views||0)+(T.pv[p.id]||0)};
 var lk=function(p){return Math.max(0,(p.likes||0)+(T.pl[p.id]||0))};
-function pubProjects(){return S.projects.filter(function(p){return p.status==='published'}).sort(function(a,b){return (b.featured?1:0)-(a.featured?1:0)||b.created-a.created})}
+function pubProjects(){return S.projects.concat(R).filter(function(p){return p.status==='published'}).sort(function(a,b){return (b.featured?1:0)-(a.featured?1:0)||b.created-a.created})}
+
+/* ---------- projects from GitHub folders ---------- */
+var R=[],repo={state:'idle',msg:'',cnt:0,at:0};
+var TEMPLATE='title: My Project\ntags: Game Art, UI/UX\ntools: Unity, Photoshop\nyear: 2026\nclient: Client name\nlink: https://example.com\nfeatured: no\n\nWrite the description here. A blank line starts a new paragraph.';
+function repoName(){
+  var r=String((S.look&&S.look.repo)||'').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/+$/,'');
+  if(/^[\w.-]+\/[\w.-]+$/.test(r))return r;
+  var m=/^([^.]+)\.github\.io$/.exec(location.hostname);
+  if(m){var seg=location.pathname.split('/')[1];return m[1]+'/'+(seg&&!/\.html?$/.test(seg)?seg:m[1]+'.github.io')}
+  return '';
+}
+function fileKind(n){
+  var e=(String(n).split('.').pop()||'').toLowerCase();
+  if(['jpg','jpeg','png','webp','avif','svg','bmp'].indexOf(e)>-1)return 'image';
+  if(e==='gif')return 'gif';
+  if(['mp4','webm','mov','m4v','ogv'].indexOf(e)>-1)return 'video';
+  if(e==='txt'||e==='md')return 'text';
+  return '';
+}
+function natCmp(a,b){return a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})}
+function assetUrl(path){return new URL(path.split('/').map(encodeURIComponent).join('/'),location.href.split('#')[0]).href}
+function rid(slug){var h=0;for(var i=0;i<slug.length;i++)h=(h*31+slug.charCodeAt(i))>>>0;return 'r'+h.toString(36)}
+function parseInfo(t){
+  var lines=String(t||'').replace(/\r/g,'').replace(/^﻿/,'').split('\n'),meta={},videos=[],i=0;
+  for(;i<lines.length;i++){
+    var m=/^\s*(title|tags|tools|year|client|link|status|featured|order|video)\s*:\s*(.*)$/i.exec(lines[i]);
+    if(!m)break;
+    var k=m[1].toLowerCase();if(k==='video')videos.push(m[2].trim());else meta[k]=m[2].trim();
+  }
+  return {meta:meta,videos:videos,desc:lines.slice(i).join('\n').trim()};
+}
+function textBlocks(t){
+  var out=[],txt=String(t||'').replace(/\r/g,'').replace(/^﻿/,'').trim();
+  if(!txt)return out;
+  var m=/^#\s+(.+)\n?([\s\S]*)$/.exec(txt);
+  if(m){out.push({id:uid(),type:'heading',text:m[1].trim()});txt=m[2].trim()}
+  if(txt)out.push({id:uid(),type:'text',text:txt});
+  return out;
+}
+function fetchText(path){return fetch(assetUrl(path),{cache:'no-cache'}).then(function(r){return r.ok?r.text():''}).catch(function(){return ''})}
+function repoTree(rp,force){
+  var key='ps-repo-tree-'+rp,now=Date.now(),c=null;
+  try{c=JSON.parse(tget(key)||'null')}catch(e){}
+  if(!force&&!unlocked&&c&&c.paths&&now-c.t<600000)return Promise.resolve(c.paths);
+  return fetch('https://api.github.com/repos/'+rp+'/git/trees/HEAD?recursive=1',{headers:{Accept:'application/vnd.github+json'}}).then(function(r){
+    if(r.status===403||r.status===429){if(c&&c.paths)return {stale:c.paths};throw new Error('GitHub is limiting requests right now. Try again in a few minutes.')}
+    if(r.status===404)throw new Error('The repository '+rp+' was not found, or it is private. Check the name below, and make sure the repository is public.');
+    if(!r.ok)throw new Error('GitHub answered with status '+r.status+'.');
+    return r.json();
+  },function(){
+    if(c&&c.paths)return {stale:c.paths};
+    throw new Error('Could not reach GitHub from this page. This works on your live site and in a normal browser tab, not inside the claude.ai preview.');
+  }).then(function(j){
+    if(j.stale)return j.stale;
+    var paths=(j.tree||[]).filter(function(x){return x.type==='blob'&&x.path.indexOf('projects/')===0}).map(function(x){return x.path});
+    tset(key,JSON.stringify({t:now,paths:paths}));
+    return paths;
+  });
+}
+function buildRepoProject(folder,files,idx){
+  var base='projects/'+folder+'/';
+  var info=files.filter(function(n){return /^project\.(txt|md)$/i.test(n)})[0];
+  var cover=files.filter(function(n){var k=fileKind(n);return /^cover\.[a-z0-9]+$/i.test(n)&&(k==='image'||k==='gif')})[0];
+  var media=files.filter(function(n){return n!==info&&n!==cover&&fileKind(n)});
+  var texts=media.filter(function(n){return fileKind(n)==='text'});
+  return Promise.all([info?fetchText(base+info):Promise.resolve('')].concat(texts.map(function(n){return fetchText(base+n)}))).then(function(res){
+    var pi=parseInfo(res[0]),tmap={};texts.forEach(function(n,i){tmap[n]=res[i+1]});
+    var meta=pi.meta,blocks=[];
+    media.forEach(function(n){
+      var k=fileKind(n);
+      if(k==='text')blocks=blocks.concat(textBlocks(tmap[n]));
+      else blocks.push({id:uid(),type:k,src:assetUrl(base+n),caption:'',fit:'full'});
+    });
+    pi.videos.forEach(function(v){if(v)blocks.push({id:uid(),type:'video',src:v,caption:'',fit:'full'})});
+    var firstImg=blocks.filter(function(b){return b.type==='image'||b.type==='gif'})[0];
+    var coverUrl=cover?assetUrl(base+cover):(firstImg?firstImg.src:'');
+    var nice=folder.replace(/^\d+[-_ ]+/,'').replace(/[-_]+/g,' ').trim();nice=nice.charAt(0).toUpperCase()+nice.slice(1);
+    var ord=parseFloat(meta.order);if(isNaN(ord))ord=idx+1000;
+    return {id:rid(folder),repo:true,folder:folder,title:meta.title||nice,desc:pi.desc,tags:A(meta.tags),tools:A(meta.tools),year:meta.year||'',client:meta.client||'',url:meta.link||'',cover:coverUrl,
+      status:/^(draft|hidden|no|off)$/i.test(meta.status||'')?'draft':'published',featured:/^(yes|true|1|on)$/i.test(meta.featured||''),sample:false,likes:0,views:0,blocks:blocks,created:4e12-ord*1000,updated:Date.now()};
+  });
+}
+function loadRepo(force){
+  var rp=repoName();
+  if(!rp){repo={state:'off',msg:'No repository is set.',cnt:0,at:Date.now()};return Promise.resolve()}
+  repo.state='loading';
+  return repoTree(rp,force).then(function(paths){
+    var by={};
+    paths.forEach(function(pth){
+      var seg=pth.split('/');
+      if(seg.length!==3||/^[._]/.test(seg[1])||/^[._]/.test(seg[2]))return;
+      (by[seg[1]]=by[seg[1]]||[]).push(seg[2]);
+    });
+    var folders=Object.keys(by).sort(natCmp);
+    return Promise.all(folders.map(function(f,i){return buildRepoProject(f,by[f].sort(natCmp),i)}));
+  }).then(function(list){R=list;repo={state:'ok',msg:'',cnt:R.length,at:Date.now()}},function(e){repo={state:'err',msg:(e&&e.message)||String(e),cnt:R.length,at:Date.now()}});
+}
+function afterRepo(){
+  var a=document.activeElement,r=parse().n;
+  if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+  if(r==='home'||r==='work'||r==='projects'||r==='overview')render(true);
+}
+function repoPanel(){
+  var st=repo.state==='loading'?'Checking your repository...':repo.state==='ok'?('Found '+repo.cnt+' project'+(repo.cnt===1?'':'s')+' in the projects folder.'):repo.state==='err'?repo.msg:'Not checked yet.';
+  return '<section class="panel stack"><h2>Projects from GitHub folders</h2>'
+   +'<p>Add a folder for each project inside <span class="mono">projects</span> in your repository. Put the images, GIFs and videos in it, plus a <span class="mono">project.txt</span> file. The site finds new folders by itself. Visitors may take up to 10 minutes to see a new one.</p>'
+   +fld('GitHub repository',ctl({scope:'look',f:'repo',val:S.look.repo||'',re:true,ph:'username/repository'}),'Written as username/repository. It must be public.')
+   +'<div class="banner" style="margin:0"><span class="'+(repo.state==='err'?'':'hint')+'" style="'+(repo.state==='err'?'color:var(--bad)':'')+'">'+esc(st)+'</span><button class="btn sm" data-act="repo-refresh">Check again</button></div>'
+   +'<details><summary class="btn sm ghost" style="display:inline-flex;cursor:pointer">How to set up a project folder</summary><div class="prose" style="font-size:15px;margin-top:12px">'
+   +'<p>Example layout in your repository:</p><pre class="mono" style="overflow-x:auto;font-size:12.5px;line-height:1.6;background:var(--surface2);padding:12px;border-radius:10px">index.html\nprojects/\n  01-harbor-app/\n    project.txt\n    cover.jpg\n    01-home.png\n    02-flow.gif\n    03-intro.txt\n    04-demo.mp4</pre>'
+   +'<p><b>project.txt</b> starts with details, then a blank line, then the description. Use these lines: title, tags, tools, year, client, link, featured (yes or no), status (draft hides the project), order (1 comes first) and video (a YouTube or Vimeo link, one per line).</p>'
+   +'<p><b>Images, GIFs and videos</b> show in file name order, so number them: 01, 02, 03. A file named <span class="mono">cover</span> becomes the thumbnail. Without one, the first image is used.</p>'
+   +'<p><b>Text sections:</b> any other .txt file shows as a paragraph between the images. Start it with a line like <span class="mono"># The brief</span> to add a heading.</p>'
+   +'<p>Folders starting with an underscore or a dot are ignored. If there is no project.txt, the folder name becomes the title.</p></div></details>'
+   +'<div class="row"><button class="btn sm" data-act="copy" data-text="'+esc(TEMPLATE)+'">'+ico('copy',14)+' Copy a project.txt template</button></div></section>';
+}
 function safeUrl(x){x=String(x||'').trim();if(!x)return '';if(!/^[a-z][a-z0-9+.-]*:/i.test(x)){if(x.indexOf('.')<0||/\s/.test(x))return '';x='https://'+x}try{var u=new URL(x);return /^https?:$/.test(u.protocol)?u.href:''}catch(e){return ''}}
 function hostOf(u){try{return new URL(u).host.replace(/^www\./,'')}catch(e){return u}}
 function para(t){return String(t||'').trim()?esc(t).split(/\n{2,}/).map(function(x){return '<p>'+x.replace(/\n/g,'<br>')+'</p>'}).join(''):''}
@@ -608,6 +724,7 @@ function blockView(b){
 }
 function workView(id){
   var p=proj(id),owner=!!(function(){try{return sessionStorage.getItem('ps-owner')}catch(e){return ''}})();
+  if(!p&&(repo.state==='loading'||repo.state==='idle'))return pubHead()+'<main class="work"><div class="wrap"><div class="work-in"><a class="back" href="#portfolio">'+ico('back',16)+' All work</a><div class="empty">Loading project...</div></div></div></main>';
   if(!p||(p.status!=='published'&&!owner))return pubHead()+'<main class="work"><div class="wrap"><div class="work-in"><a class="back" href="#portfolio">'+ico('back',16)+' All work</a><div class="empty">This project is not available.</div></div></div></main>';
   var pubs=pubProjects(),i=pubs.indexOf(p),prev=i>0?pubs[i-1]:null,next=i>-1&&i<pubs.length-1?pubs[i+1]:null;
   var isL=liked.indexOf(p.id)>-1;
@@ -680,13 +797,18 @@ function projCards(){
   var q=ui.q.trim().toLowerCase();
   var list=S.projects.filter(function(p){return (ui.filter==='all'||p.status===ui.filter)&&(!q||(p.title+' '+p.tags.join(' ')).toLowerCase().indexOf(q)>-1)});
   list.sort(function(a,b){return ui.sort==='views'?vw(b)-vw(a):ui.sort==='likes'?lk(b)-lk(a):ui.sort==='az'?a.title.localeCompare(b.title):b.created-a.created});
-  return '<button class="newc" data-act="new-project">'+ico('plus',28)+'New project</button>'+list.map(function(p){
+  var rl=R.filter(function(p){return (ui.filter==='all'||p.status===ui.filter)&&(!q||(p.title+' '+p.tags.join(' ')).toLowerCase().indexOf(q)>-1)});
+  var rcards=rl.map(function(p){
+    return '<article class="pc"><span class="pt"><img '+msrc(p.cover)+' alt="" loading="lazy"></span><div class="pb"><h3>'+esc(p.title)+'</h3><div class="row"><span class="pill '+(p.status==='published'?'pub':'draft')+'">'+p.status+'</span><span class="pill sample">GitHub folder</span></div><div class="stats"><span>'+ico('eye',13)+fmt(vw(p))+'</span><span>'+ico('heart',13)+fmt(lk(p))+'</span><span>'+p.blocks.length+' blocks</span></div><div class="pacts"><button class="btn sm" data-act="view" data-id="'+p.id+'">'+ico('eye',14)+' View</button></div><p class="hint">Edit it in your repository: projects/'+esc(p.folder)+'</p></div></article>';
+  }).join('');
+  return '<button class="newc" data-act="new-project">'+ico('plus',28)+'New project</button>'+rcards+list.map(function(p){
     return '<article class="pc"><a class="pt" href="#dash-edit-'+p.id+'" aria-label="Edit '+esc(p.title)+'"><img '+msrc(p.cover)+' alt="" loading="lazy"></a><div class="pb"><h3>'+esc(p.title)+'</h3><div class="row"><span class="pill '+(p.status==='published'?'pub':'draft')+'">'+p.status+'</span>'+(p.sample?'<span class="pill sample">Sample</span>':'')+(p.featured?'<span class="pill sample">Featured</span>':'')+'</div><div class="stats"><span>'+ico('eye',13)+fmt(vw(p))+'</span><span>'+ico('heart',13)+fmt(lk(p))+'</span><span>'+p.blocks.length+' blocks</span></div>'
     +'<div class="pacts"><a class="btn sm" href="#dash-edit-'+p.id+'">'+ico('edit',14)+' Edit</a><button class="btn sm" data-act="view" data-id="'+p.id+'">'+ico('eye',14)+' View</button><button class="btn sm" data-act="status" data-id="'+p.id+'">'+(p.status==='published'?'Unpublish':'Publish')+'</button><button class="icon-btn sm" data-act="feature" data-id="'+p.id+'" aria-label="'+(p.featured?'Remove from featured':'Feature this project')+'">'+ico('star',15)+'</button><button class="icon-btn sm" data-act="dup" data-id="'+p.id+'" aria-label="Duplicate">'+ico('copy',15)+'</button><button class="icon-btn sm" data-act="del" data-id="'+p.id+'" aria-label="Delete">'+ico('trash',15)+'</button></div></div></article>';
   }).join('');
 }
 function projectsView(){
-  return '<div class="ph"><div><h1>Projects</h1><p>'+S.projects.length+' in total. Drag nothing, click anything.</p></div></div>'
+  return '<div class="ph"><div><h1>Projects</h1><p>'+(S.projects.length+R.length)+' in total.</p></div></div>'
+  +repoPanel()
   +'<div class="tools"><div class="seg">'+[['all','All'],['published','Published'],['draft','Drafts']].map(function(f){return '<button data-act="pfilter" data-v="'+f[0]+'" aria-pressed="'+(ui.filter===f[0])+'">'+f[1]+'</button>'}).join('')+'</div><input class="in grow" style="max-width:280px" id="projSearch" data-ui="q" type="search" placeholder="Search by title or tag" value="'+esc(ui.q)+'"><select class="in" style="width:auto" id="projSort" data-ui="sort"><option value="new"'+(ui.sort==='new'?' selected':'')+'>Newest</option><option value="views"'+(ui.sort==='views'?' selected':'')+'>Most viewed</option><option value="likes"'+(ui.sort==='likes'?' selected':'')+'>Most appreciated</option><option value="az"'+(ui.sort==='az'?' selected':'')+'>A to Z</option></select></div>'
   +'<div class="pgrid" id="pgrid">'+projCards()+'</div>';
 }
@@ -716,6 +838,7 @@ function blockEd(p,b,i,n){
 function editView(id){
   var p=proj(id);
   if(!p)return '<div class="empty">That project was not found. <a href="#dash-projects">Back to projects</a></div>';
+  if(p.repo)return '<div class="empty">This project comes from the <b>projects/'+esc(p.folder)+'</b> folder in your GitHub repository, so edit it there. <a href="#dash-projects">Back to projects</a></div>';
   var adds=[['image','Image'],['gif','GIF'],['video','Video'],['text','Text'],['heading','Heading'],['embed','Link card'],['divider','Divider']];
   return '<div class="ph"><div class="row"><a class="btn sm" href="#dash-projects">'+ico('back',14)+' Projects</a><span class="pill '+(p.status==='published'?'pub':'draft')+'">'+p.status+'</span><span class="hint savestate">'+esc(saveMsg)+'</span></div><div class="row"><button class="btn" data-act="view" data-id="'+p.id+'">'+ico('eye',16)+' Preview</button><button class="btn primary" data-act="status" data-id="'+p.id+'">'+(p.status==='published'?'Unpublish':'Publish')+'</button></div></div>'
   +'<div class="ed"><div class="stack">'
@@ -956,6 +1079,7 @@ var ACT={
     else toast('That is not the access key.');
   },
   lock:function(){unlocked=false;try{sessionStorage.removeItem('ps-unlocked');sessionStorage.removeItem('ps-owner')}catch(e){}go('portfolio');toast('Dashboard locked.')},
+  'repo-refresh':function(){loadRepo(true).then(function(){render(true)});render(true)},
   'reset-now':function(){try{localStorage.removeItem(KEY)}catch(e){}S=load();saveMsg='';go('portfolio')},
   'reset-local':function(){confirmBox('Discard changes?','This removes the copy saved in this browser and reloads the version built into the file.','Discard',function(){try{localStorage.removeItem(KEY)}catch(e){}S=load();saveMsg='';render(true);toast('Back to the built-in version.')})},
   'clear-all':function(){confirmBox('Start from empty?','All projects and profile text are removed from this browser. Download a backup first if you might want them back.','Start empty',function(){var e=sample();e.projects=[];e.stats={demo:false,daily:{}};e.profile=blankProfile();e.profile.avatar='';S=norm(e);save();render(true);toast('Empty portfolio ready.')})},
@@ -976,7 +1100,7 @@ document.addEventListener('input',function(e){
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;if(!d)return;
   if(d.ui==='sort'){ui.sort=t.value;render(true);return}
-  if(d.scope&&d.f&&d.re){applyField(t);render(true)}
+  if(d.scope&&d.f&&d.re){applyField(t);if(d.scope==='look'&&d.f==='repo'){loadRepo(true).then(function(){render(true)})}render(true)}
 });
 document.addEventListener('keydown',function(e){
   var t=e.target;
@@ -1012,6 +1136,7 @@ window.addEventListener('click',function(e){
 applyLook();
 if(!S.edited)saveMsg='';
 if(parse().n==='unlock')unlockNow();
+loadRepo().then(afterRepo);
 render(false);
 if(curHash.length>1&&parse().n!=='home'){onRoute()}else lastKey=curHash;
 })();
